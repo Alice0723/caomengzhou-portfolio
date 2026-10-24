@@ -1,11 +1,11 @@
 import * as T from './three.module.min.js';
 const host=document.querySelector('#museum-world');
-if(host) init().catch(()=>{host.classList.add('world-failed');host.querySelector('.world-status').textContent=host.dataset.lang==='en'?'The 3D view could not load. Please try a browser with WebGL enabled.':'3D 展台暂时无法加载，请使用支持 WebGL 的浏览器重试。';});
+if(host) init().catch(error=>{console.error('Museum view:',error);host.classList.add('world-failed');host.querySelector('.world-status').textContent=host.dataset.lang==='en'?'The 3D view could not load. Please try a browser with WebGL enabled.':'3D 展台暂时无法加载，请使用支持 WebGL 的浏览器重试。';});
 async function init(){
 const en=host.dataset.lang==='en',stage=host.querySelector('.world-stage'),status=host.querySelector('.world-status');
-const labels=en?['The museum lover','The concert-going me','The music technologist']:['文博的我','追星的咸粥','音乐科技的我'];
+const labels=en?['The museum lover','The concert-going me','The music technologist']:['文博的我','追星的我','音乐科技的我'];
 const captions=en?['Clay, history, and a little curiosity.','A bowl of joy, a sea of lights.','Turning sound and ideas into experiences.']:['在器物与历史之间，收藏好奇心。','一碗咸粥，装下灯海与彩带。','让声音、程序与想象，一起发生。'];
-const renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
+let renderer;try{renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});}catch{const {MuseumSoftwareRenderer}=await import('./museum-software.js');renderer=new MuseumSoftwareRenderer();host.dataset.renderer='canvas';}
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.32;
 stage.prepend(renderer.domElement);renderer.domElement.setAttribute('aria-label',en?'Rotating three-sided miniature museum. Drag horizontally or use the view buttons.':'可旋转的三面微型展馆。左右拖动，或使用下方按钮切换。');renderer.domElement.setAttribute('role','img');
 const scene=new T.Scene(),camera=new T.PerspectiveCamera(34,1,.1,40);camera.position.set(0,3.45,7.3);camera.lookAt(0,1.25,0);
@@ -14,7 +14,7 @@ const root=new T.Group();scene.add(root);
 const mats={};function mat(c,rough=.65,metal=0){const k=c+':'+rough+':'+metal;return mats[k]??=new T.MeshStandardMaterial({color:c,roughness:rough,metalness:metal});}
 const pink=mat('#e9a9b8'),cream=mat('#fff0df'),rose=mat('#c67591'),dark=mat('#4c3b50'),clay=mat('#9c8065',.96),clayLight=mat('#b19a7d',.96),carve=mat('#65513f',1);
 function mesh(g,m,p,x=0,y=0,z=0){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;p.add(o);return o;}
-function sphere(p,x,y,z,sx,sy,sz,m){const o=mesh(new T.SphereGeometry(1,24,16),m,p,x,y,z);o.scale.set(sx,sy,sz);return o;}
+function sphere(p,x,y,z,sx,sy,sz,m){const o=mesh(new T.SphereGeometry(1,20,12),m,p,x,y,z);o.scale.set(sx,sy,sz);return o;}
 function box(p,x,y,z,w,h,d,m,r=.035){r=Math.min(r,w/2.1,h/2.1,d/2.1);const s=new T.Shape();s.moveTo(-w/2+r,-h/2);s.lineTo(w/2-r,-h/2);s.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);s.lineTo(w/2,h/2-r);s.quadraticCurveTo(w/2,h/2,w/2-r,h/2);s.lineTo(-w/2+r,h/2);s.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);s.lineTo(-w/2,-h/2+r);s.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);const g=new T.ExtrudeGeometry(s,{depth:d-2*r,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:r,bevelThickness:r,curveSegments:5});g.translate(0,0,-d/2+r);return mesh(g,m,p,x,y,z);}
 function cyl(p,x,y,z,rt,rb,h,m){return mesh(new T.CylinderGeometry(rt,rb,h,48),m,p,x,y,z);}
 function rod(p,a,b,r,m){const A=new T.Vector3(...a),B=new T.Vector3(...b),o=mesh(new T.CylinderGeometry(r,r,A.distanceTo(B),12),m,p);o.position.copy(A).add(B).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),B.sub(A).normalize());return o;}
@@ -73,7 +73,7 @@ const model=mesh(new T.IcosahedronGeometry(.13),new T.MeshStandardMaterial({colo
 // Interaction: horizontal drag, snapping, keyboard controls, explicit sound.
 let angle=.10,target=.10,active=0,drag=null,visible=true,auto=false,raf,last=0,elapsed=0,fxUntil=0;
 const buttons=[...host.querySelectorAll('[data-world-face]')],title=host.querySelector('.world-title'),caption=host.querySelector('.world-caption');
-function updateFace(i){active=(i+3)%3;buttons.forEach((b,j)=>b.setAttribute('aria-pressed',String(j===active)));title.textContent=labels[active];caption.textContent=captions[active];host.dataset.face=String(active);}
+function updateFace(i){active=((i%3)+3)%3;buttons.forEach((b,j)=>b.setAttribute('aria-pressed',String(j===active)));title.textContent=labels[active];caption.textContent=captions[active];host.dataset.face=String(active);}
 function select(i){auto=false;host.querySelector('[data-world-auto]').setAttribute('aria-pressed','false');const desired=-i*2*Math.PI/3+.10;target=angle+Math.atan2(Math.sin(desired-angle),Math.cos(desired-angle));updateFace(i);start();}
 buttons.forEach((b,i)=>b.addEventListener('click',()=>select(i)));
 const canvas=renderer.domElement;canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;drag={x:e.clientX,start:angle,moved:false};auto=false;host.querySelector('[data-world-auto]').setAttribute('aria-pressed','false');canvas.setPointerCapture(e.pointerId);start();});canvas.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x;drag.moved ||= Math.abs(dx)>5;angle=drag.start+dx*.009;target=angle;updateFace(Math.round((.10-angle)/(2*Math.PI/3)));});function end(){if(!drag)return;drag=null;const idx=Math.round((.10-angle)/(2*Math.PI/3));target=-idx*2*Math.PI/3+.10;updateFace(idx);start();}canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);
