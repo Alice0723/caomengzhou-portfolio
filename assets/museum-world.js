@@ -1,0 +1,91 @@
+import * as T from './three.module.min.js';
+const host=document.querySelector('#museum-world');
+if(host) init().catch(()=>{host.classList.add('world-failed');host.querySelector('.world-status').textContent=host.dataset.lang==='en'?'The 3D view could not load. Please try a browser with WebGL enabled.':'3D 展台暂时无法加载，请使用支持 WebGL 的浏览器重试。';});
+async function init(){
+const en=host.dataset.lang==='en',stage=host.querySelector('.world-stage'),status=host.querySelector('.world-status');
+const labels=en?['The museum lover','The concert-going me','The music technologist']:['文博的我','追星的咸粥','音乐科技的我'];
+const captions=en?['Clay, history, and a little curiosity.','A bowl of joy, a sea of lights.','Turning sound and ideas into experiences.']:['在器物与历史之间，收藏好奇心。','一碗咸粥，装下灯海与彩带。','让声音、程序与想象，一起发生。'];
+const renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.32;
+stage.prepend(renderer.domElement);renderer.domElement.setAttribute('aria-label',en?'Rotating three-sided miniature museum. Drag horizontally or use the view buttons.':'可旋转的三面微型展馆。左右拖动，或使用下方按钮切换。');renderer.domElement.setAttribute('role','img');
+const scene=new T.Scene(),camera=new T.PerspectiveCamera(34,1,.1,40);camera.position.set(0,3.45,7.3);camera.lookAt(0,1.25,0);
+scene.add(new T.HemisphereLight(0xfff8ef,0xc6a8bc,2.6));const sun=new T.DirectionalLight(0xffefe3,3.1);sun.position.set(-3,7,5);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-4;sun.shadow.camera.right=4;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-4;sun.shadow.normalBias=.025;scene.add(sun);const fill=new T.DirectionalLight(0xe6d8ff,1.5);fill.position.set(4,3,-4);scene.add(fill);
+const root=new T.Group();scene.add(root);
+const mats={};function mat(c,rough=.65,metal=0){const k=c+':'+rough+':'+metal;return mats[k]??=new T.MeshStandardMaterial({color:c,roughness:rough,metalness:metal});}
+const pink=mat('#e9a9b8'),cream=mat('#fff0df'),rose=mat('#c67591'),dark=mat('#4c3b50'),clay=mat('#9c8065',.96),clayLight=mat('#b19a7d',.96),carve=mat('#65513f',1);
+function mesh(g,m,p,x=0,y=0,z=0){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;p.add(o);return o;}
+function sphere(p,x,y,z,sx,sy,sz,m){const o=mesh(new T.SphereGeometry(1,24,16),m,p,x,y,z);o.scale.set(sx,sy,sz);return o;}
+function box(p,x,y,z,w,h,d,m,r=.035){r=Math.min(r,w/2.1,h/2.1,d/2.1);const s=new T.Shape();s.moveTo(-w/2+r,-h/2);s.lineTo(w/2-r,-h/2);s.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);s.lineTo(w/2,h/2-r);s.quadraticCurveTo(w/2,h/2,w/2-r,h/2);s.lineTo(-w/2+r,h/2);s.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);s.lineTo(-w/2,-h/2+r);s.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);const g=new T.ExtrudeGeometry(s,{depth:d-2*r,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:r,bevelThickness:r,curveSegments:5});g.translate(0,0,-d/2+r);return mesh(g,m,p,x,y,z);}
+function cyl(p,x,y,z,rt,rb,h,m){return mesh(new T.CylinderGeometry(rt,rb,h,48),m,p,x,y,z);}
+function rod(p,a,b,r,m){const A=new T.Vector3(...a),B=new T.Vector3(...b),o=mesh(new T.CylinderGeometry(r,r,A.distanceTo(B),12),m,p);o.position.copy(A).add(B).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),B.sub(A).normalize());return o;}
+function curve(p,points,r,m){return mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points.map(a=>new T.Vector3(...a))),24,r,8,false),m,p);}
+function ring(p,x,y,z,r,t,m){const o=mesh(new T.TorusGeometry(r,t,10,48),m,p,x,y,z);return o;}
+function canvasMaterial(draw,w=640,h=400){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;tx.anisotropy=renderer.capabilities.getMaxAnisotropy();return new T.MeshBasicMaterial({map:tx,side:T.DoubleSide});}
+const floor=mesh(new T.PlaneGeometry(200,200),new T.ShadowMaterial({opacity:.12}),scene,0,-.02,0);floor.rotation.x=-Math.PI/2;
+cyl(root,0,.12,0,1.79,1.79,.24,pink);cyl(root,0,.26,0,1.70,1.72,.08,cream);cyl(root,0,.03,0,1.57,1.58,.06,rose);
+for(let i=0;i<3;i++){let a=Math.PI/3+i*2*Math.PI/3;const wall=box(root,Math.sin(a)*.78,1.37,Math.cos(a)*.78,.065,2.14,1.56,mat('#f1c9c5'));wall.rotation.y=a;const pole=cyl(root,Math.sin(a)*1.58,1.38,Math.cos(a)*1.58,.058,.058,2.15,cream);}
+cyl(root,0,2.53,0,1.79,1.79,.20,pink);cyl(root,0,2.65,0,1.70,1.78,.07,mat('#f2bfca'));sphere(root,0,2.77,0,.20,.16,.15,pink);sphere(root,-.17,2.73,0,.14,.12,.12,pink);sphere(root,.17,2.73,0,.14,.12,.12,pink);
+const rooms=[];for(let i=0;i<3;i++){const g=new T.Group();g.rotation.y=i*2*Math.PI/3;root.add(g);rooms.push(g);const lamp=cyl(g,0,2.40,.77,.14,.14,.035,mat('#fff5d0'));const l=new T.PointLight(0xffdfab,.65,2);l.position.set(0,2.28,.8);g.add(l);}
+// Museum: a sculptural interpretation of the real raised-foot drummer, not a scan.
+const museum=rooms[0];cyl(museum,-.12,.40,.88,.53,.56,.21,cream);
+const figurine=new T.Group();figurine.position.set(-.14,.51,.85);figurine.scale.setScalar(.83);museum.add(figurine);
+cyl(figurine,0,.025,0,.41,.43,.05,clay);sphere(figurine,.18,.30,.02,.24,.31,.25,clay);sphere(figurine,-.20,.28,.05,.25,.24,.24,clay);
+sphere(figurine,.23,.09,.25,.19,.09,.26,clay);sphere(figurine,-.28,.29,.24,.14,.16,.24,clay);
+const foot=sphere(figurine,-.35,.48,.45,.16,.24,.085,clayLight);foot.rotation.z=-.13;for(let j=0;j<5;j++)sphere(figurine,-.47+j*.057,.67-Math.abs(j-1)*.012,.455,.033,.045,.042,clay);
+sphere(figurine,.0,.69,0,.27,.44,.23,clay);sphere(figurine,-.015,.57,.12,.25,.24,.18,clay);sphere(figurine,0,1.03,0,.19,.20,.17,clay);
+const head=new T.Group();head.position.set(-.06,1.23,.06);head.rotation.z=.1;figurine.add(head);
+sphere(head,0,0,0,.255,.265,.225,clayLight);sphere(head,-.23,-.02,0,.055,.09,.05,clay);sphere(head,.23,-.02,0,.055,.09,.05,clay);
+sphere(head,0,-.03,.22,.063,.065,.075,clay);sphere(head,-.13,-.06,.18,.09,.07,.055,clayLight);sphere(head,.13,-.06,.18,.09,.07,.055,clayLight);
+for(const side of[-1,1]){curve(head,[[side*.045,.045,.218],[side*.10,.065,.22],[side*.17,.035,.19]],.014,carve);curve(head,[[side*.04,.105,.211],[side*.10,.13,.205],[side*.18,.09,.178]],.020,clay);}
+sphere(head,0,-.12,.195,.12,.057,.035,carve);curve(head,[[-.13,-.10,.19],[0,-.18,.20],[.13,-.10,.19]],.025,clay);box(head,0,-.106,.228,.15,.023,.016,clayLight,.005);
+for(let j=0;j<3;j++)curve(head,[[-.14,.16+j*.029,.16],[0,.19+j*.025,.19],[.14,.15+j*.027,.16]],.009,clay);
+const hat=cyl(head,0,.25,-.015,.20,.23,.14,clay);hat.rotation.z=-.08;box(head,-.10,.33,.09,.09,.09,.07,clayLight,.02);
+// Right arm raised with beater, left arm around a flat drum.
+sphere(figurine,-.31,.99,0,.16,.16,.16,clay);rod(figurine,[-.28,.99,0],[-.52,1.10,.10],.105,clay);rod(figurine,[-.52,1.10,.10],[-.58,1.25,.24],.09,clay);sphere(figurine,-.58,1.25,.24,.09,.07,.09,clayLight);rod(figurine,[-.81,1.04,.26],[-.22,1.48,.20],.025,clay);
+sphere(figurine,.29,1.00,0,.15,.15,.16,clay);curve(figurine,[[.27,1.01,0],[.43,.91,.07],[.47,.72,.23],[.34,.65,.32]],.09,clay);
+const drum=cyl(figurine,.33,.75,.30,.22,.22,.105,clayLight);drum.rotation.x=Math.PI/2;ring(figurine,.33,.75,.36,.207,.017,clay);sphere(figurine,.35,.64,.36,.09,.06,.06,clay);
+for(let j=0;j<5;j++)sphere(figurine,.11+j*.05,.12,.46,.026,.026,.04,clayLight);
+// Archaeological shovel: slender wooden shaft and hollow half-cylinder scoop.
+const shovel=new T.Group();shovel.position.set(-.90,.34,1.02);shovel.rotation.z=-.12;museum.add(shovel);rod(shovel,[0,.18,0],[0,1.52,0],.027,mat('#906d55'));const scoop=mesh(new T.CylinderGeometry(.10,.08,.28,16,1,true,0,Math.PI),new T.MeshStandardMaterial({color:'#9d9585',metalness:.5,roughness:.6,side:T.DoubleSide}),shovel,0,.15,0);scoop.rotation.y=Math.PI/2;
+const labelMat=canvasMaterial(c=>{c.fillStyle='#fff4e3';c.fillRect(0,0,640,400);c.fillStyle='#9b755e';c.font='34px serif';c.fillText(en?'HAN DYNASTY':'东汉 · 击鼓说唱俑',40,100);c.fillStyle='#c7a58b';for(let i=0;i<3;i++)c.fillRect(40,160+i*50,480-i*65,12);});const plaque=mesh(new T.PlaneGeometry(.58,.25),labelMat,museum,-.10,.42,1.46);plaque.rotation.x=-.20;
+const vase=cyl(museum,.83,.51,.92,.12,.16,.39,mat('#bc9273'));ring(museum,.83,.72,.92,.12,.025,clay).rotation.x=Math.PI/2;
+// Concert: bowl, NO steam or floating white shapes.
+const fan=rooms[1];const backdrop=canvasMaterial((c,w,h)=>{const gr=c.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#6c4b80');gr.addColorStop(1,'#c18bb8');c.fillStyle=gr;c.fillRect(0,0,w,h);let seed=7;const rand=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};for(let i=0;i<90;i++){const x=rand()*w,y=100+rand()*h,r=4+rand()*9;c.fillStyle=['#f6b8dd','#e6b8f6','#ffdfad'][i%3];c.globalAlpha=.25+rand()*.4;c.beginPath();c.ellipse(x,y,r,r*2,0,0,7);c.fill();}c.globalAlpha=1;});const back=mesh(new T.PlaneGeometry(1.65,1.55),backdrop,fan,0,1.42,.34);
+box(fan,0,.34,1.04,1.39,.06,.78,mat('#efc6cb'));
+const bowl=new T.Group();bowl.position.set(-.10,.40,1.01);fan.add(bowl);
+const pts=[[.26,0],[.34,.04],[.44,.16],[.54,.34],[.59,.49],[.58,.53],[.54,.52],[.50,.35],[.39,.16],[.24,.07]].map(([x,y])=>new T.Vector2(x,y));mesh(new T.LatheGeometry(pts,64),cream,bowl);cyl(bowl,0,.48,0,.54,.54,.025,mat('#f1dfb4'));ring(bowl,0,.52,0,.565,.025,cream).rotation.x=Math.PI/2;
+for(let i=0;i<42;i++){const a=i*2.399,r=.46*Math.sqrt((i+.5)/42);sphere(bowl,Math.cos(a)*r,.51,Math.sin(a)*r,.042,.014,.023,mat(i%3?'#fff0d4':'#e9d4ab'));}
+for(let i=0;i<9;i++){const a=i*2.4,r=.12+(i%3)*.11;box(bowl,Math.cos(a)*r,.54,Math.sin(a)*r,.065,.025,.054,mat(i%2?'#98ae62':'#becb7b'),.004);}
+for(const x of[-.17,.17])sphere(bowl,x,.28,.458,.033,.04,.015,dark);for(const x of[-.27,.27])sphere(bowl,x,.21,.43,.055,.025,.012,mat('#eaa8b4'));
+curve(bowl,[[-.07,.23,.49],[0,.185,.505],[.07,.23,.49]],.012,dark);
+const stick=new T.Group();stick.position.set(.80,.39,1.05);stick.rotation.z=-.22;stick.scale.setScalar(.70);fan.add(stick);box(stick,0,.20,0,.11,.37,.10,rose);box(stick,.08,.28,0,.12,.11,.10,dark);sphere(stick,0,.52,0,.23,.19,.12,new T.MeshPhysicalMaterial({color:'#f5a6d5',roughness:.15,transparent:true,opacity:.65,metalness:.1}));sphere(stick,.09,.51,.10,.095,.09,.06,mat('#ffd4ec'));sphere(stick,-.09,.55,.08,.065,.065,.055,mat('#ffe4ad'));const crest=box(stick,-.09,.71,0,.09,.10,.05,pink);crest.rotation.z=.3;ring(stick,.13,.25,0,.075,.018,mat('#d7bb71'));
+const confetti=[];for(let i=0;i<19;i++){const a=i*2.399;const x=Math.sin(a)*(i%2?.91:.65),y=.68+(i%7)*.21,z=.58+(i%4)*.19;const o=box(fan,x,y,z,.045,.10,.014,mat(['#edc874','#d79fc6','#b4a0d3'][i%3]),.007);o.rotation.set(i*.7,i,.4*i);confetti.push({o,y,phase:i});}
+// Music workstation with original locally drawn DAW / patch / scene texture.
+const tech=rooms[2];box(tech,0,.74,.98,1.98,.12,.85,cream);for(const x of[-.81,.81])rod(tech,[x,.3,1],[x,.70,1],.045,pink);
+const screenMat=canvasMaterial((c,w,h)=>{c.fillStyle='#302b3d';c.fillRect(0,0,w,h);c.fillStyle='#8c738c';c.fillRect(0,0,w,24);c.fillStyle='#f9d4df';c.font='12px monospace';c.fillText('SOUND / PATCH / SPACE',20,17);for(let j=0;j<4;j++){const y=40+j*38;c.fillStyle=['#d591b2','#ad90cc','#91c3c2','#cbb180'][j];c.fillRect(15,y,55,26);c.globalAlpha=.25;c.fillRect(80,y,w-100,26);c.globalAlpha=1;c.beginPath();for(let x=80;x<w-20;x++){const v=Math.sin(x*.3+j)*Math.sin(x*.071+j)*10;c.lineTo(x,y+13+v);}c.strokeStyle=['#ecc3df','#baa5e9','#b3e4de','#f2dfaa'][j];c.stroke();}c.fillStyle='#efcbd8';c.fillRect(370,33,2,159);c.strokeStyle='#9a83a2';c.strokeRect(12,207,320,180);c.strokeRect(345,207,283,180);const nodes=[[30,230],[150,235],[65,285],[210,285],[135,345]];c.lineWidth=2;for(let j=0;j<4;j++){c.strokeStyle=['#e8acc5','#91c3c2'][j%2];c.beginPath();c.moveTo(nodes[j][0]+25,nodes[j][1]+18);c.bezierCurveTo(nodes[j][0]+20,330,160,320,160,345);c.stroke();}for(const [x,y]of nodes){c.fillStyle='#ad839b';c.fillRect(x,y,68,18);c.fillStyle='#fff0e6';c.font='10px monospace';c.fillText(x===135?'midiout':'note / 60',x+3,y+12);}c.strokeStyle='#615869';for(let j=0;j<8;j++){c.beginPath();c.moveTo(350,290+j*12);c.lineTo(620,290+j*12);c.moveTo(355+j*35,382);c.lineTo(480+(j-4)*12,245);c.stroke();}c.fillStyle='#b6c894';c.fillRect(481,280,5,60);for(let j=0;j<4;j++){c.beginPath();c.ellipse(480+(j%2?-13:13),305-j*11,15,6,j%2?.6:-.6,0,7);c.fill();}c.fillStyle='#e8adcc';c.beginPath();c.arc(483,274,12,0,7);c.fill();});
+const laptop=new T.Group();laptop.position.set(0,.84,.78);tech.add(laptop);box(laptop,0,0,.13,1.10,.045,.58,mat('#ba9da7'));const lid=box(laptop,0,.37,-.10,1.08,.70,.045,dark);lid.rotation.x=-.10;const display=mesh(new T.PlaneGeometry(1.00,.61),screenMat,laptop,0,.37,-.068);display.rotation.x=-.10;
+for(let row=0;row<3;row++)for(let k=0;k<10;k++)box(laptop,-.44+k*.095,.029,.02+row*.08,.075,.008,.055,dark,.003);
+const keyboard=box(tech,0,.88,1.35,1.15,.09,.28,dark);for(let i=0;i<14;i++)box(tech,-.52+i*.08,.94,1.39,.071,.025,.21,cream,.004);for(let i=0;i<13;i++)if(![2,6,9].includes(i))box(tech,-.48+i*.08,.965,1.33,.038,.023,.12,dark,.003);
+for(const x of[-.83,.83]){box(tech,x,1.09,.68,.32,.50,.27,pink);for(const [y,r]of[[1.02,.105],[1.23,.045]]){const d=cyl(tech,x,y,.83,r,r,.024,dark);d.rotation.x=Math.PI/2;ring(tech,x,y,.848,r*.73,.012,rose);}}
+// Audio interface and microphone.
+box(tech,.77,.86,1.19,.32,.14,.26,mat('#b5a4c4'));for(const x of[.69,.84])ring(tech,x,.87,1.329,.043,.01,mat('#d6b773'));cyl(tech,-.77,.83,1.24,.10,.10,.03,dark);rod(tech,[-.77,.84,1.24],[-.77,1.12,1.24],.018,dark);sphere(tech,-.77,1.23,1.24,.075,.13,.075,mat('#ab93b4'));for(let i=0;i<4;i++)ring(tech,-.77,1.18+i*.035,1.24,.072,.005,dark).rotation.x=Math.PI/2;
+const model=mesh(new T.IcosahedronGeometry(.13),new T.MeshStandardMaterial({color:'#b17eaa',wireframe:true}),tech,.54,1.60,.60);rod(tech,[.54,1.40,.60],[.54,1.48,.60],.015,rose);
+// Interaction: horizontal drag, snapping, keyboard controls, explicit sound.
+let angle=.10,target=.10,active=0,drag=null,visible=true,auto=false,raf,last=0,elapsed=0,fxUntil=0;
+const buttons=[...host.querySelectorAll('[data-world-face]')],title=host.querySelector('.world-title'),caption=host.querySelector('.world-caption');
+function updateFace(i){active=(i+3)%3;buttons.forEach((b,j)=>b.setAttribute('aria-pressed',String(j===active)));title.textContent=labels[active];caption.textContent=captions[active];host.dataset.face=String(active);}
+function select(i){auto=false;host.querySelector('[data-world-auto]').setAttribute('aria-pressed','false');const desired=-i*2*Math.PI/3+.10;target=angle+Math.atan2(Math.sin(desired-angle),Math.cos(desired-angle));updateFace(i);start();}
+buttons.forEach((b,i)=>b.addEventListener('click',()=>select(i)));
+const canvas=renderer.domElement;canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;drag={x:e.clientX,start:angle,moved:false};auto=false;host.querySelector('[data-world-auto]').setAttribute('aria-pressed','false');canvas.setPointerCapture(e.pointerId);start();});canvas.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x;drag.moved ||= Math.abs(dx)>5;angle=drag.start+dx*.009;target=angle;updateFace(Math.round((.10-angle)/(2*Math.PI/3)));});function end(){if(!drag)return;drag=null;const idx=Math.round((.10-angle)/(2*Math.PI/3));target=-idx*2*Math.PI/3+.10;updateFace(idx);start();}canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);
+stage.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();select((active+(e.key==='ArrowRight'?1:2))%3);}});
+host.querySelector('[data-world-auto]').addEventListener('click',e=>{auto=!auto;e.currentTarget.setAttribute('aria-pressed',String(auto));start();});
+let audio;host.querySelector('[data-world-sound]').addEventListener('click',async()=>{try{audio??=new(window.AudioContext||window.webkitAudioContext)();await audio.resume();const now=audio.currentTime;const pitches=active===0?[105]:active===1?[523.25,659.25,783.99]:[261.63,329.63,392,523.25];pitches.forEach((f,i)=>{const o=audio.createOscillator(),g=audio.createGain(),t=now+i*.12;o.type=active===0?'sine':'triangle';o.frequency.setValueAtTime(f,t);if(active===0)o.frequency.exponentialRampToValueAtTime(45,t+.25);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.11,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+.8);o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.85);o.onended=()=>{o.disconnect();g.disconnect();};});status.textContent=en?'A small sound from this world.':'听见这一面的小小回声。';fxUntil=elapsed+1.5;start();}catch{status.textContent=en?'Audio is unavailable in this browser.':'当前浏览器暂时无法播放声音。';}});
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function render(t){raf=0;const dt=Math.min((t-last)/1000,.05)||.016;last=t;elapsed+=dt;if(auto&&!drag){target+=dt*.22;updateFace(Math.round((.10-target)/(2*Math.PI/3)));}angle=reduced&&!drag&&!auto?target:angle+(target-angle)*Math.min(1,dt*10);root.rotation.y=angle;model.rotation.y=elapsed*.35;const effect=elapsed<fxUntil;for(const c of confetti)c.o.position.y=c.y+(effect?Math.sin(elapsed*5+c.phase)*.045:0);bowl.rotation.z=effect&&active===1?Math.sin(elapsed*10)*.025:0;renderer.render(scene,camera);host.dataset.ready='true';if(visible&&(auto||drag||Math.abs(target-angle)>.001||effect))raf=requestAnimationFrame(render);}
+function start(){if(!raf&&visible){last=performance.now();raf=requestAnimationFrame(render);}}
+new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();start();}).observe(stage);
+new IntersectionObserver(([e])=>{visible=e.isIntersecting&&!document.hidden;if(visible)start();else if(raf){cancelAnimationFrame(raf);raf=0;}},{threshold:0}).observe(stage);
+document.addEventListener('visibilitychange',()=>{visible=!document.hidden;if(visible)start();else{if(raf)cancelAnimationFrame(raf);raf=0;}});
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();status.textContent=en?'3D paused. Reload to restore the view.':'3D 显示已暂停，刷新页面可重新加载。';});
+updateFace(0);status.textContent=en?'Drag to rotate · Use ← → keys when focused':'左右拖动旋转 · 聚焦后可用 ← → 键';host.classList.add('world-loaded');start();
+}
