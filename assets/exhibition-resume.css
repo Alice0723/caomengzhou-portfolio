@@ -1,0 +1,35 @@
+/* Exhibition and résumé share the same frame, rules and type hierarchy. */
+#work .sectionhead {border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:18px}
+#work .filters {margin-bottom:22px;gap:0;border-bottom:1px solid var(--line)}
+#work .filter {border:0;border-bottom:2px solid transparent;padding:9px 13px;background:transparent}
+#work .filter.active {color:var(--ink);border-bottom-color:var(--green);background:var(--paper)}
+#work .projects {grid-template-columns:repeat(2,minmax(0,1fr));gap:26px}
+#work .project {display:block;overflow:hidden;border:1px solid var(--line);background:color-mix(in srgb,var(--paper) 46%,var(--bg));align-self:stretch}
+#work .project[hidden] {display:none}
+#work .project.featured {grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:center}
+#work .project.featured[hidden] {display:none}
+#work .cover {height:auto;aspect-ratio:16/9;border:0;outline:0;border-bottom:1px solid var(--line)}
+#work .featured .cover {border-bottom:0;border-right:1px solid var(--line)}
+#work .project-copy {display:block;padding:16px 19px 20px}
+#work .featured .project-copy {padding:clamp(18px,4vw,54px)}
+#work .project-title {margin:0;gap:10px;align-items:center}
+#work .featured h3 {font-size:clamp(26px,4vw,50px);line-height:1.16}
+#work .project-kind {display:block;margin-bottom:12px;font-size:11px;color:var(--sub);letter-spacing:.09em}
+#work .project-copy p {margin-bottom:0}
+#about .edu {display:block}
+#about .edu-row + .edu-row {border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+#experience .resume-columns {gap:clamp(16px,4vw,48px);margin-top:28px}
+#experience .resume-columns > div {min-width:0;border-top:2px solid var(--green);padding:18px clamp(12px,2vw,24px) 0;background:color-mix(in srgb,var(--paper) 48%,var(--bg))}
+#experience .resume-label {margin-top:0}
+#experience .entry {padding-block:15px;border-top:1px solid var(--line);border-bottom:0}
+#experience .entry h3 {margin:0 0 4px}
+#experience .entry p {margin-bottom:0}
+#skills .tools {gap:1px;background:var(--line);border:1px solid var(--line)}
+#skills .tool {border:0;background:var(--bg)}
+@media(max-width:700px) {
+  #work .projects {grid-template-columns:1fr;gap:16px}
+  #work .project.featured {grid-template-columns:1fr}
+  #work .featured .cover {border-right:0;border-bottom:1px solid var(--line)}
+  #experience .resume-columns {grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){#work .cover,#work .arrow{transition:none}}
