@@ -1,0 +1,73 @@
+/* Shared exhibition styling for both languages. */
+.hero .museum-scenes {
+  max-width: 370px;
+  gap: 0;
+  padding: clamp(10px, 2vw, 17px);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 16px 42px -27px #6b303979;
+}
+.museum-scenes .world-heading {
+  padding: 2px 0 12px;
+  font-size: 16px;
+}
+.museum-scenes .scene-stage {
+  border-radius: 0;
+  border-color: #b5888d;
+  background: #875d60;
+}
+.museum-scenes .scene-stage::after {
+  z-index: 3;
+  border: 1px solid #f6d5ca96;
+  inset: 7px;
+  box-shadow: 0 0 0 7px #4e213724, inset 0 0 20px #3f151830;
+}
+.museum-scenes .scene-image { transition: none; }
+.museum-scenes .scene-image[data-outgoing] { opacity: 1; z-index: 0; }
+.museum-scenes .scene-picture { transform: translate(var(--scene-x, 0px), var(--scene-y, 0px)) scale(1.045); }
+
+.museum-scenes .world-title { margin: 14px 0 4px; }
+.museum-scenes .world-caption { min-height: 2.9em; line-height: 1.45; }
+.museum-scenes .world-tabs {
+  gap: 0;
+  margin-top: 5px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.museum-scenes .world-tabs button {
+  position: relative;
+  padding: 10px 4px;
+  border: 0;
+  color: var(--sub);
+  background: transparent;
+  transition: color 180ms ease, background 180ms ease;
+}
+.museum-scenes .world-tabs button + button { border-left: 1px solid var(--line); }
+.museum-scenes .world-tabs button:hover,
+.museum-scenes .world-tabs button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ink) 7%, var(--paper));
+  color: var(--ink);
+}
+.museum-scenes .world-tabs button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 18% -1px;
+  height: 2px;
+  background: #ba7885;
+}
+.museum-scenes .world-tools { margin-top: 8px; }
+.museum-scenes .world-tools button {
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--sub);
+}
+.museum-scenes .world-tools button:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+.band { padding-block: 16px; }
+@media (max-width: 720px) {
+  .hero .museum-scenes { margin-top: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .museum-scenes .scene-picture { transform: none; }
+  .museum-scenes .world-tabs button { transition: none; }
+}
